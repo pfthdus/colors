@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>색 편집기</title>
+  <style>
+    .container {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      font-family: sans-serif;
+      background: #f0f0f0;
+      width: fit-content;
+      border: 2px solid #999;
+    }
+
+    /* 왼쪽: 기본 색상 팔레트 */
+    .palette-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .palette-label {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 24px);
+      gap: 3px;
+    }
+
+    .palette-swatch {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+
+    .palette-swatch:hover {
+      border: 2px solid #000;
+      transform: scale(1.1);
+    }
+
+    /* 가운데: 그라디언트 스펙트럼 */
+    .spectrum-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .spectrum-label {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    #spectrumCanvas {
+      border: 1px solid #555;
+      cursor: crosshair;
+    }
+
+    /* 색조 슬라이더 */
+    .hue-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hue-label {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    #hueCanvas {
+      border: 1px solid #555;
+      cursor: crosshair;
+    }
+
+    /* 오른쪽: 결과 패널 */
+    .result-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 140px;
+    }
+
+    .result-label {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .color-preview-box {
+      width: 140px;
+      height: 80px;
+      border: 2px solid #555;
+      background: #ff0000;
+    }
+
+    .hex-display {
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      color: #111;
+      background: #fff;
+      border: 1px solid #aaa;
+      padding: 6px 10px;
+      text-align: center;
+    }
+
+    .rgb-display {
+      font-size: 12px;
+      color: #444;
+      background: #fff;
+      border: 1px solid #aaa;
+      padding: 6px 10px;
+      line-height: 1.8;
+    }
+
+    .copy-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .copy-value {
+      flex: 1;
+      font-size: 13px;
+      font-weight: bold;
+      background: #fff;
+      border: 1px solid #aaa;
+      padding: 5px 8px;
+      letter-spacing: 1px;
+    }
+
+    .btn-copy {
+      background-color: #1a73e8;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      background-color: #1558b0;
+    }
+
+    .btn-copy.copied {
+      background-color: #2e7d32;
+    }
+
+    .copy-label {
+      font-size: 11px;
+      color: #666;
+      font-weight: bold;
+    }
+
+    .cursor-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 1px #000;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 기본 색상 팔레트 -->
+  <div class="palette-section">
+    <div class="palette-label">기본 색상</div>
+    <div class="palette-grid" id="paletteGrid"></div>
+  </div>
+
+  <!-- 스펙트럼 영역 -->
+  <div class="spectrum-section">
+    <div class="spectrum-label">색상 스펙트럼</div>
+    <div class="canvas-wrapper">
+      <canvas id="spectrumCanvas" width="220" height="180"></canvas>
+      <div class="cursor-dot" id="spectrumCursor" style="left:220px; top:0;"></div>
+    </div>
+  </div>
+
+  <!-- 색조 슬라이더 -->
+  <div class="hue-section">
+    <div class="hue-label">색조</div>
+    <div class="canvas-wrapper">
+      <canvas id="hueCanvas" width="24" height="180"></canvas>
+      <div class="cursor-dot" id="hueCursor" style="left:12px; top:0;"></div>
+    </div>
+  </div>
+
+  <!-- 결과 패널 -->
+  <div class="result-section">
+    <div class="result-label">선택된 색상</div>
+    <div class="color-preview-box" id="colorPreview"></div>
+
+    <div class="copy-label">HEX</div>
+    <div class="copy-row">
+      <div class="copy-value" id="hexDisplay">#FF0000</div>
+      <button class="btn-copy" id="btnCopyHex" onclick="copyValue('hex')">복사</button>
+    </div>
+
+    <div class="copy-label">RGB</div>
+    <div class="copy-row">
+      <div class="copy-value" id="rgbDisplay">rgb(255, 0, 0)</div>
+      <button class="btn-copy" id="btnCopyRgb" onclick="copyValue('rgb')">복사</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── 기본 팔레트 색상 ──────────────────────────────────────
+  const paletteColors = [
+    '#000000','#808080','#800000','#808000','#008000','#008080','#000080','#800080',
+    '#ffffff','#c0c0c0','#ff0000','#ffff00','#00ff00','#00ffff','#0000ff','#ff00ff',
+    '#ff8040','#ff8080','#ffbf80','#ffff80','#80ff80','#80ffff','#8080ff','#ff80ff',
+    '#804000','#ff4040','#ff8000','#bfbf00','#408040','#004040','#0000a0','#8000a0',
+    '#400080','#8040ff','#0080ff','#00bfbf','#00a000','#407000','#804000','#804040',
+    '#ff0080','#ff80c0','#ffb3b3','#ffe0b3','#ffffb3','#b3ffb3','#b3ffff','#b3b3ff',
+    '#e0b3ff','#ffb3e0','#1a1a2e','#16213e','#0f3460','#533483','#e94560','#f5a623',
+    '#7ed321','#50e3c2','#4a90d9','#9b59b6','#e74c3c','#e67e22','#2ecc71','#1abc9c',
+  ];
+
+  const paletteGrid = document.getElementById('paletteGrid');
+  paletteColors.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.addEventListener('click', () => {
+      const rgb = hexToRgb(color);
+      updateResult(rgb.r, rgb.g, rgb.b);
+    });
+    paletteGrid.appendChild(swatch);
+  });
+
+  // ── 색조(Hue) 슬라이더 ────────────────────────────────────
+  const hueCanvas = document.getElementById('hueCanvas');
+  const hueCtx = hueCanvas.getContext('2d');
+  const hueCursor = document.getElementById('hueCursor');
+  let currentHue = 0;
+
+  function drawHueSlider() {
+    const gradient = hueCtx.createLinearGradient(0, 0, 0, hueCanvas.height);
+    for (let i = 0; i <= 360; i += 30) {
+      gradient.addColorStop(i / 360, `hsl(${i}, 100%, 50%)`);
+    }
+    hueCtx.fillStyle = gradient;
+    hueCtx.fillRect(0, 0, hueCanvas.width, hueCanvas.height);
+  }
+
+  // ── 스펙트럼 캔버스 ───────────────────────────────────────
+  const spectrumCanvas = document.getElementById('spectrumCanvas');
+  const spectrumCtx = spectrumCanvas.getContext('2d');
+  const spectrumCursor = document.getElementById('spectrumCursor');
+  let specX = spectrumCanvas.width;
+  let specY = 0;
+
+  function drawSpectrum(hue) {
+    // 흰색 → 색상 (가로)
+    const colorGrad = spectrumCtx.createLinearGradient(0, 0, spectrumCanvas.width, 0);
+    colorGrad.addColorStop(0, '#ffffff');
+    colorGrad.addColorStop(1, `hsl(${hue}, 100%, 50%)`);
+    spectrumCtx.fillStyle = colorGrad;
+    spectrumCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+
+    // 투명 → 검정 (세로)
+    const darkGrad = spectrumCtx.createLinearGradient(0, 0, 0, spectrumCanvas.height);
+    darkGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    darkGrad.addColorStop(1, 'rgba(0,0,0,1)');
+    spectrumCtx.fillStyle = darkGrad;
+    spectrumCtx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
+  }
+
+  function getColorAtSpectrum(x, y) {
+    const pixel = spectrumCtx.getImageData(x, y, 1, 1).data;
+    return { r: pixel[0], g: pixel[1], b: pixel[2] };
+  }
+
+  function getColorAtHue(y) {
+    const pixel = hueCtx.getImageData(0, y, 1, 1).data;
+    return { r: pixel[0], g: pixel[1], b: pixel[2] };
+  }
+
+  // ── 결과 업데이트 ─────────────────────────────────────────
+  const colorPreview = document.getElementById('colorPreview');
+  const hexDisplay = document.getElementById('hexDisplay');
+  const rgbDisplay = document.getElementById('rgbDisplay');
+
+  function updateResult(r, g, b) {
+    const hex = '#' + toHex(r) + toHex(g) + toHex(b);
+    colorPreview.style.backgroundColor = hex;
+    hexDisplay.textContent = hex.toUpperCase();
+    rgbDisplay.textContent = `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function copyValue(type) {
+    const text = type === 'hex'
+      ? document.getElementById('hexDisplay').textContent
+      : document.getElementById('rgbDisplay').textContent;
+    const btnId = type === 'hex' ? 'btnCopyHex' : 'btnCopyRgb';
+    const btn = document.getElementById(btnId);
+
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '완료!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '복사';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+
+  function toHex(v) {
+    return v.toString(16).padStart(2, '0').toUpperCase();
+  }
+
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
+  }
+
+  // ── 이벤트: 색조 슬라이더 클릭 ───────────────────────────
+  function onHueClick(e) {
+    const rect = hueCanvas.getBoundingClientRect();
+    const y = Math.min(Math.max(Math.round(e.clientY - rect.top), 0), hueCanvas.height - 1);
+    currentHue = Math.round((y / hueCanvas.height) * 360);
+    hueCursor.style.top = y + 'px';
+    drawSpectrum(currentHue);
+    const c = getColorAtSpectrum(specX, specY);
+    updateResult(c.r, c.g, c.b);
+  }
+
+  let hueDown = false;
+  hueCanvas.addEventListener('mousedown', e => { hueDown = true; onHueClick(e); });
+  document.addEventListener('mousemove', e => { if (hueDown) onHueClick(e); });
+  document.addEventListener('mouseup', () => { hueDown = false; });
+
+  // ── 이벤트: 스펙트럼 클릭 ────────────────────────────────
+  function onSpectrumClick(e) {
+    const rect = spectrumCanvas.getBoundingClientRect();
+    specX = Math.min(Math.max(Math.round(e.clientX - rect.left), 0), spectrumCanvas.width - 1);
+    specY = Math.min(Math.max(Math.round(e.clientY - rect.top), 0), spectrumCanvas.height - 1);
+    spectrumCursor.style.left = specX + 'px';
+    spectrumCursor.style.top = specY + 'px';
+    const c = getColorAtSpectrum(specX, specY);
+    updateResult(c.r, c.g, c.b);
+  }
+
+  let specDown = false;
+  spectrumCanvas.addEventListener('mousedown', e => { specDown = true; onSpectrumClick(e); });
+  document.addEventListener('mousemove', e => { if (specDown) onSpectrumClick(e); });
+  document.addEventListener('mouseup', () => { specDown = false; });
+
+  // ── 초기화 ────────────────────────────────────────────────
+  drawHueSlider();
+  drawSpectrum(0);
+  updateResult(255, 0, 0);
+</script>
+</body>
+</html>
